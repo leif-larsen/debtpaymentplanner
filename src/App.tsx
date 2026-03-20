@@ -27,7 +27,7 @@ function App() {
   const addDebtLabel = editingDebt ? 'Edit Debt' : 'Add Debt'
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white dark:bg-gray-900">
       {/* Navigation bar */}
       <nav className="bg-gray-900 text-white">
         <div className="mx-auto max-w-5xl px-4">
