@@ -1,0 +1,21 @@
+services:
+  app:
+    build:
+      context: .
+      target: dev
+    ports:
+      - "5173:5173"
+    volumes:
+      - .:/app
+      - /app/node_modules   # prevent host node_modules from overriding container's
+    environment:
+      - NODE_ENV=development
+
+  app-prod:
+    build:
+      context: .
+      target: prod
+    ports:
+      - "8080:80"
+    profiles:
+      - prod
