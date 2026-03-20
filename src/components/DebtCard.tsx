@@ -3,6 +3,38 @@ import { useDebtStore } from '../store/useDebtStore'
 import { calculatePayoffPlan, formatCurrency, formatDuration } from '../utils/calculations'
 import type { Debt } from '../types/debt'
 
+function AmortizationTable({ debt }: { debt: Debt }) {
+  const { schedule } = calculatePayoffPlan(debt)
+  return (
+    <div className="mt-4 border-t border-gray-100 pt-4 overflow-x-auto">
+      <table className="w-full text-xs text-gray-700">
+        <thead>
+          <tr className="text-left text-gray-400 border-b border-gray-100">
+            <th className="pb-2 font-medium">Month</th>
+            <th className="pb-2 font-medium">Date</th>
+            <th className="pb-2 font-medium text-right">Payment</th>
+            <th className="pb-2 font-medium text-right">Principal</th>
+            <th className="pb-2 font-medium text-right">Interest</th>
+            <th className="pb-2 font-medium text-right">Balance</th>
+          </tr>
+        </thead>
+        <tbody>
+          {schedule.map((row) => (
+            <tr key={row.month} className="border-b border-gray-50">
+              <td className="py-1">{row.month}</td>
+              <td className="py-1">{row.date}</td>
+              <td className="py-1 text-right">{formatCurrency(row.payment)}</td>
+              <td className="py-1 text-right text-green-700">{formatCurrency(row.principal)}</td>
+              <td className="py-1 text-right text-red-500">{formatCurrency(row.interest)}</td>
+              <td className="py-1 text-right font-medium">{formatCurrency(row.remainingBalance)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
 interface DebtCardProps {
   debt: Debt
   onEdit?: (debt: Debt) => void
@@ -20,6 +52,7 @@ function formatPayoffDate(yyyyMM: string): string {
 export default function DebtCard({ debt, onEdit }: DebtCardProps) {
   const removeDebt = useDebtStore((s) => s.removeDebt)
   const [confirming, setConfirming] = useState(false)
+  const [showSchedule, setShowSchedule] = useState(false)
 
   const plan = calculatePayoffPlan(debt)
 
@@ -81,6 +114,15 @@ export default function DebtCard({ debt, onEdit }: DebtCardProps) {
             <Stat label="Time remaining" value={formatDuration(plan.monthsToPayoff)} />
             <Stat label="Total interest" value={formatCurrency(plan.totalInterestPaid)} />
           </dl>
+
+          <button
+            onClick={() => setShowSchedule((v) => !v)}
+            className="mt-4 text-xs text-indigo-600 hover:text-indigo-800 transition-colors"
+          >
+            {showSchedule ? '▲ Hide schedule' : '▼ Show amortization schedule'}
+          </button>
+
+          {showSchedule && <AmortizationTable debt={debt} />}
         </>
       )}
     </div>

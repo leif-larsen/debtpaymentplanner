@@ -1,6 +1,7 @@
 import { useDebtStore } from '../store/useDebtStore'
 import { calculatePayoffPlan, formatCurrency, formatDuration } from '../utils/calculations'
 import DebtCard from './DebtCard'
+import PayoffChart from './PayoffChart'
 import type { Debt } from '../types/debt'
 
 interface DashboardProps {
@@ -70,6 +71,9 @@ export default function Dashboard({ onAddDebt, onEditDebt }: DashboardProps) {
           <span className="text-sm font-semibold text-red-600">{formatCurrency(totalInterest)}</span>
         </div>
       </div>
+
+      {/* Payoff chart */}
+      <PayoffChart debts={sorted} />
 
       {/* Debt list */}
       <div className="grid gap-4 sm:grid-cols-2">
