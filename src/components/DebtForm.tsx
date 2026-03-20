@@ -59,14 +59,13 @@ export default function DebtForm({ initialData, onSave }: DebtFormProps) {
     if (initialData) {
       updateDebt(initialData.id, form)
       setSuccess('Debt updated!')
-      onSave?.()
+      setTimeout(() => onSave?.(), 800)
     } else {
       addDebt(form)
       setSuccess('Debt added!')
       setForm(emptyForm())
+      setTimeout(() => onSave?.(), 800)
     }
-
-    setTimeout(() => setSuccess(null), 2000)
   }
 
   const isEditing = !!initialData
