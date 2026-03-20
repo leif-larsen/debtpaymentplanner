@@ -1,6 +1,6 @@
 # Debt Payment Planner
 
-A personal finance tool for tracking debts and visualizing payoff timelines. Runs entirely in the browser — no account, no backend, no data ever leaves your device.
+A personal finance tool for tracking debts and visualizing payoff timelines. Data is stored in a SQLite database on the server — nothing is kept in the browser.
 
 ## Features
 
@@ -25,7 +25,7 @@ The balance-over-time chart shows three lines per debt once payments have been r
 | Actual | Dashed (lighter shade) | Running balance based on payments logged so far, up to today |
 | Forecast | Dotted (same color as plan) | Re-projection from the current actual balance, showing the updated payoff date |
 
-A vertical reference line marks today. If you have made extra payments the forecast line will finish earlier than the original plan; if you have underpaid it will finish later.
+A vertical reference line marks today. Extra payments shift the forecast line to finish earlier; underpayments push it later.
 
 ### Strategy tools
 - **Strategy comparison** — side-by-side avalanche (highest rate first) vs snowball (lowest balance first), showing total interest and payoff date for each
@@ -35,15 +35,15 @@ A vertical reference line marks today. If you have made extra payments the forec
 
 ### Local development
 
-The app requires the Node/Hono API server to be running alongside the Vite dev server (which proxies `/api` calls to port 3000).
+The app requires the Node/Hono API server running alongside the Vite dev server. Vite proxies `/api` requests to port 3000.
 
 ```bash
 npm install
 
-# Terminal 1 — API server (SQLite, auto-restarts on changes)
+# Terminal 1 — API server with SQLite (auto-restarts on changes)
 npm run dev:server
 
-# Terminal 2 — Vite frontend (hot reload)
+# Terminal 2 — Vite frontend with hot reload
 npm run dev
 ```
 
@@ -55,36 +55,37 @@ Open [http://localhost:5173](http://localhost:5173). Data is stored in `./data/d
 docker compose --profile prod up -d --build
 ```
 
-The app runs on port 3000. SQLite data is stored in a named Docker volume (`db-data`) and survives container rebuilds.
+The app runs on port 3000. SQLite data is stored in a named Docker volume (`db-data`) and survives container rebuilds and image updates.
 
-To deploy an update:
-
-```bash
-docker compose --profile prod up -d --build
-```
-
-Docker Compose replaces the container but the `db-data` volume (and your data) is untouched.
+To deploy an update, run the same command — Docker Compose replaces the container while leaving the `db-data` volume intact.
 
 ### Migrating existing browser data
 
-If you had data stored in the old localStorage-based version, a yellow banner will appear on first load. Click **Migrate now** to copy all debts and payments from the browser into the SQLite database, then clear the localStorage keys. The migration is idempotent — running it twice will not create duplicates.
+If you previously used a version of the app that stored data in `localStorage`, a yellow banner will appear on first load. Click **Migrate now** to copy all debts and payments into the SQLite database and clear the old browser storage. The migration endpoint uses `INSERT OR IGNORE`, so it is safe to run more than once.
 
 ## Project Structure
 
 ```
+server/
+├── db.ts                   # SQLite init (better-sqlite3), schema creation
+├── index.ts                # Hono app — API routes, static file serving, /api/migrate
+└── routes/
+    ├── debts.ts            # GET / POST / PUT / DELETE /api/debts
+    └── payments.ts         # GET / POST / DELETE /api/payments
 src/
 ├── components/
 │   ├── Dashboard.tsx           # Overview stats, chart, strategy tools, debt list
 │   ├── DebtCard.tsx            # Per-debt summary, amortization table, ahead/behind badge
 │   ├── DebtForm.tsx            # Add / edit debt (type-aware field set)
 │   ├── ExtraPaymentSimulator.tsx
+│   ├── MigrationBanner.tsx     # One-click migration from old localStorage data
 │   ├── PaymentForm.tsx         # Log a payment or charge against a debt
 │   ├── PaymentsPage.tsx        # Full payment history
 │   ├── PayoffChart.tsx         # Balance over time (plan / actual / forecast)
 │   └── StrategyComparison.tsx
 ├── store/
-│   ├── useDebtStore.ts         # Debt CRUD, persisted to localStorage
-│   └── usePaymentStore.ts      # Payment log, persisted to localStorage
+│   ├── useDebtStore.ts         # Debt CRUD — async fetch calls to /api/debts
+│   └── usePaymentStore.ts      # Payment log — async fetch calls to /api/payments
 ├── types/
 │   ├── debt.ts                 # Debt, DebtType, PayoffMonth, DebtPayoffPlan, …
 │   └── payment.ts              # Payment, PaymentType
@@ -98,9 +99,6 @@ Default currency is **NOK** (Norwegian Krone). To change it, update the `currenc
 
 ## Data storage
 
-All data is stored in `localStorage` under two keys:
+All data is stored in a SQLite file at `./data/db.sqlite` (local) or `/app/data/db.sqlite` (Docker). The Docker volume `db-data` persists the file across container rebuilds.
 
-- `debt-planner` — debt records
-- `debt-planner-payments` — payment log
-
-Clearing browser storage will erase all data. There is no export or sync feature yet.
+The database is created automatically on first run — no manual setup required.
