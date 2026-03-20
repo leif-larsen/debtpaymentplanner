@@ -1,4 +1,5 @@
 import type { Debt, DebtPayoffPlan, PayoffMonth } from '../types/debt'
+import type { Payment } from '../types/payment'
 
 export type Strategy = 'avalanche' | 'snowball'
 
@@ -170,6 +171,49 @@ export function calculateExtraPaymentImpact(debt: Debt, extraAmount: number): Ex
     monthsSaved: original.monthsToPayoff - modified.monthsToPayoff,
     newPayoffDate: modified.payoffDate,
   }
+}
+
+/**
+ * Compute the actual current balance of a debt after applying recorded payments and charges.
+ * Payments reduce the balance; charges increase it.
+ */
+export function getActualBalance(debt: Debt, payments: Payment[]): number {
+  const net = payments.reduce((sum, p) => {
+    return p.type === 'payment' ? sum - p.amount : sum + p.amount
+  }, 0)
+  return Math.max(0, debt.balance + net)
+}
+
+/**
+ * Return the planned balance from the amortization schedule at a given ISO date (YYYY-MM-DD).
+ * Returns the starting balance if the date is before any schedule entry.
+ */
+export function getPlannedBalanceAtDate(debt: Debt, isoDate: string): number {
+  const plan = calculatePayoffPlan(debt)
+  const targetMonth = isoDate.slice(0, 7) // YYYY-MM
+  const entry = [...plan.schedule].reverse().find((m) => m.date <= targetMonth)
+  return entry ? entry.remainingBalance : debt.balance
+}
+
+/**
+ * Build a series of { date, balance } points from recorded payments for chart rendering.
+ * Starts at debt.balance on debt.startDate and applies each payment chronologically.
+ */
+export function getActualBalanceSeries(
+  debt: Debt,
+  payments: Payment[]
+): { date: string; balance: number }[] {
+  const sorted = [...payments].sort((a, b) => a.date.localeCompare(b.date))
+  const series: { date: string; balance: number }[] = [
+    { date: debt.startDate.slice(0, 7), balance: debt.balance },
+  ]
+  let balance = debt.balance
+  for (const p of sorted) {
+    balance = p.type === 'payment' ? balance - p.amount : balance + p.amount
+    balance = Math.max(0, balance)
+    series.push({ date: p.date.slice(0, 7), balance })
+  }
+  return series
 }
 
 /**
