@@ -1,2 +1,3 @@
-// Placeholder — implement in next phase
-export {}
+export default function DebtCard() {
+  return null
+}
