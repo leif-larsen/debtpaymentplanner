@@ -9,11 +9,16 @@ import {
   ResponsiveContainer,
   ReferenceLine,
 } from 'recharts'
-import { calculatePayoffPlan, formatCurrency, getActualBalanceSeries } from '../utils/calculations'
+import {
+  calculatePayoffPlan,
+  formatCurrency,
+  getActualBalance,
+  getActualBalanceSeries,
+} from '../utils/calculations'
 import { usePaymentStore } from '../store/usePaymentStore'
 import type { Debt } from '../types/debt'
 
-// Planned line colors (saturated)
+// Planned / forecast line colors (saturated)
 const COLORS = [
   '#6366f1', // indigo-500
   '#f59e0b', // amber-500
@@ -53,80 +58,106 @@ function generateMonths(from: string, to: string): string[] {
   return months
 }
 
+function buildPlannedMap(debt: Debt): Map<string, number> {
+  const plan = calculatePayoffPlan(debt)
+  const m = new Map<string, number>()
+  m.set(debt.startDate.slice(0, 7), debt.balance)
+  for (const row of plan.schedule) m.set(row.date, row.remainingBalance)
+  return m
+}
+
+function lookupPlanned(map: Map<string, number>, date: string, fallback: number): number {
+  if (map.has(date)) return map.get(date)!
+  let val = fallback
+  for (const [d, v] of map) {
+    if (d <= date) val = v
+  }
+  return val
+}
+
 export default function PayoffChart({ debts }: PayoffChartProps) {
   const payments = usePaymentStore((s) => s.payments)
 
   if (debts.length === 0) return null
 
-  const plans = debts.map((d) => ({ debt: d, plan: calculatePayoffPlan(d) }))
   const today = new Date().toISOString().slice(0, 7)
 
+  // Original plans (from stored debt.balance)
+  const originalPlans = debts.map((d) => calculatePayoffPlan(d))
+
+  // Per-debt payment lists
+  const debtPayments = debts.map((d) => payments.filter((p) => p.debtId === d.id))
+
+  // Actual balance series (history up to today)
+  const actualMaps = debts.map((debt, i) => {
+    if (debtPayments[i].length === 0) return null
+    const series = getActualBalanceSeries(debt, debtPayments[i])
+    const raw = new Map<string, number>()
+    for (const pt of series) raw.set(pt.date, pt.balance)
+    return raw
+  })
+
+  // Forecast plans — re-projected from current actual balance, starting today
+  const forecastPlans = debts.map((debt, i) => {
+    if (!actualMaps[i]) return null
+    const actualBalance = getActualBalance(debt, debtPayments[i])
+    return calculatePayoffPlan({ ...debt, balance: actualBalance, startDate: today + '-01' })
+  })
+
+  // Date range: earliest start → latest of (original payoff, forecast payoff)
   const minDate = debts.reduce(
     (min, d) => (d.startDate.slice(0, 7) < min ? d.startDate.slice(0, 7) : min),
     debts[0].startDate.slice(0, 7)
   )
-  const maxDate = plans.reduce(
-    (max, { plan }) => (plan.payoffDate > max ? plan.payoffDate : max),
-    ''
-  )
+  const maxDate = [
+    ...originalPlans.map((p) => p.payoffDate),
+    ...forecastPlans.map((p) => p?.payoffDate ?? ''),
+  ].reduce((max, d) => (d > max ? d : max), '')
 
   const allMonths = generateMonths(minDate, maxDate)
 
-  // Build planned balance maps: date → balance per debt
-  const plannedMaps = plans.map(({ debt, plan }) => {
-    const m = new Map<string, number>()
-    m.set(debt.startDate.slice(0, 7), debt.balance)
-    for (const row of plan.schedule) {
-      m.set(row.date, row.remainingBalance)
-    }
-    return m
-  })
+  // Build planned maps
+  const plannedMaps = debts.map((d) => buildPlannedMap(d))
 
-  // Build actual balance maps with forward-fill, capped at today
-  const actualMaps = debts.map((debt) => {
-    const debtPayments = payments.filter((p) => p.debtId === debt.id)
-    if (debtPayments.length === 0) return null
-    const series = getActualBalanceSeries(debt, debtPayments)
+  // Build forecast maps (from today onward)
+  const forecastMaps = forecastPlans.map((plan, i) => {
+    if (!plan) return null
     const m = new Map<string, number>()
-    for (const pt of series) m.set(pt.date, pt.balance)
-    // Forward-fill across all months up to today
-    const filled = new Map<string, number>()
-    let last = debt.balance
-    for (const month of allMonths) {
-      if (month > today) break
-      if (m.has(month)) last = m.get(month)!
-      filled.set(month, last)
-    }
-    return filled
+    m.set(today, getActualBalance(debts[i], debtPayments[i]))
+    for (const row of plan.schedule) m.set(row.date, row.remainingBalance)
+    return m
   })
 
   // Build chart data
   const data = allMonths.map((date) => {
     const point: Record<string, string | number> = { date }
-    plans.forEach(({ debt }, i) => {
-      // Planned: interpolate from map, forward-fill 0 after payoff
-      const plannedMap = plannedMaps[i]
-      const startDate = debt.startDate.slice(0, 7)
-      if (date < startDate) {
-        point[debt.name] = debt.balance
-      } else if (plannedMap.has(date)) {
-        point[debt.name] = plannedMap.get(date)!
-      } else {
-        // After payoff, find nearest prior entry
-        let val = 0
-        for (const [d, v] of plannedMap) {
-          if (d <= date) val = v
-        }
-        point[debt.name] = val
-      }
 
-      // Actual
+    debts.forEach((debt, i) => {
+      // Original planned line (full range)
+      point[debt.name] = lookupPlanned(plannedMaps[i], date, debt.balance)
+
+      // Actual line (up to today only)
       const actualMap = actualMaps[i]
       if (actualMap && date <= today) {
-        const val = actualMap.get(date)
-        if (val !== undefined) point[`${debt.name} (actual)`] = val
+        let last = debt.balance
+        for (const month of allMonths) {
+          if (month > date) break
+          if (actualMap.has(month)) last = actualMap.get(month)!
+        }
+        point[`${debt.name} (actual)`] = last
+      }
+
+      // Forecast line (today onward)
+      const forecastMap = forecastMaps[i]
+      if (forecastMap && date >= today) {
+        point[`${debt.name} (forecast)`] = lookupPlanned(
+          forecastMap,
+          date,
+          getActualBalance(debt, debtPayments[i])
+        )
       }
     })
+
     return point
   })
 
@@ -143,18 +174,16 @@ export default function PayoffChart({ debts }: PayoffChartProps) {
     return `${m}/${y.slice(2)}`
   }
 
-  // Show every ~6 months on x-axis to avoid crowding
   const tickInterval = Math.max(1, Math.floor(allMonths.length / 10))
-
-  const hasActual = actualMaps.some((m) => m !== null)
+  const hasForecast = forecastPlans.some((p) => p !== null)
 
   return (
     <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-5">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">Balance over time</h2>
-        {hasActual && (
+        {hasForecast && (
           <span className="text-xs text-gray-500 dark:text-gray-400">
-            Solid = planned · Dashed = actual
+            Solid = original plan · Dashed = actual · Dotted = forecast
           </span>
         )}
       </div>
@@ -185,6 +214,7 @@ export default function PayoffChart({ debts }: PayoffChartProps) {
           />
           {debts.map((debt, i) => (
             <>
+              {/* Original plan — solid */}
               <Line
                 key={`${debt.id}-planned`}
                 type="monotone"
@@ -193,6 +223,7 @@ export default function PayoffChart({ debts }: PayoffChartProps) {
                 dot={false}
                 strokeWidth={2}
               />
+              {/* Actual history — dashed, lighter */}
               {actualMaps[i] && (
                 <Line
                   key={`${debt.id}-actual`}
@@ -202,6 +233,18 @@ export default function PayoffChart({ debts }: PayoffChartProps) {
                   dot={false}
                   strokeWidth={2}
                   strokeDasharray="5 3"
+                />
+              )}
+              {/* Forecast from current balance — dotted, same saturated color */}
+              {forecastMaps[i] && (
+                <Line
+                  key={`${debt.id}-forecast`}
+                  type="monotone"
+                  dataKey={`${debt.name} (forecast)`}
+                  stroke={COLORS[i % COLORS.length]}
+                  dot={false}
+                  strokeWidth={2}
+                  strokeDasharray="2 4"
                 />
               )}
             </>
