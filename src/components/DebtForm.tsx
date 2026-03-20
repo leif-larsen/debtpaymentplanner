@@ -13,6 +13,7 @@ const emptyForm = (): DebtFormData => ({
   name: '',
   balance: 0,
   interestRate: 0,
+  minimumPaymentPercent: undefined,
   minimumPayment: 0,
   monthlyPayment: 0,
   startDate: today(),
@@ -112,6 +113,31 @@ export default function DebtForm({ initialData, onSave }: DebtFormProps) {
         </Field>
 
         <div className="grid grid-cols-2 gap-4">
+          <Field label="Minimum payment % (optional)" hint="e.g. 3.5 for credit cards">
+            <input
+              type="number"
+              min={0}
+              max={100}
+              step={0.1}
+              value={form.minimumPaymentPercent ?? ''}
+              onChange={(e) => {
+                const pct = e.target.value === '' ? undefined : Number(e.target.value)
+                const computed = pct && form.balance > 0
+                  ? Math.round(form.balance * pct / 100 * 100) / 100
+                  : undefined
+                setForm((f) => ({
+                  ...f,
+                  minimumPaymentPercent: pct,
+                  minimumPayment: computed ?? f.minimumPayment,
+                  monthlyPayment: computed ?? f.monthlyPayment,
+                }))
+                setErrors((err) => ({ ...err, minimumPayment: undefined, monthlyPayment: undefined }))
+              }}
+              placeholder="e.g. 3.5"
+              className={input()}
+            />
+          </Field>
+
           <Field label="Minimum monthly payment (NOK)" error={errors.minimumPayment}>
             <input
               type="number"
@@ -123,19 +149,19 @@ export default function DebtForm({ initialData, onSave }: DebtFormProps) {
               className={input(errors.minimumPayment)}
             />
           </Field>
-
-          <Field label="Actual monthly payment (NOK)" error={errors.monthlyPayment}>
-            <input
-              type="number"
-              min={0}
-              step={1}
-              value={form.monthlyPayment || ''}
-              onChange={(e) => set('monthlyPayment', Number(e.target.value))}
-              placeholder="e.g. 3000"
-              className={input(errors.monthlyPayment)}
-            />
-          </Field>
         </div>
+
+        <Field label="Actual monthly payment (NOK)" error={errors.monthlyPayment}>
+          <input
+            type="number"
+            min={0}
+            step={1}
+            value={form.monthlyPayment || ''}
+            onChange={(e) => set('monthlyPayment', Number(e.target.value))}
+            placeholder="e.g. 3000"
+            className={input(errors.monthlyPayment)}
+          />
+        </Field>
 
         <Field label="Start date" error={errors.startDate}>
           <input
@@ -175,15 +201,20 @@ export default function DebtForm({ initialData, onSave }: DebtFormProps) {
 function Field({
   label,
   error,
+  hint,
   children,
 }: {
   label: string
   error?: string
+  hint?: string
   children: React.ReactNode
 }) {
   return (
     <div>
-      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{label}</label>
+      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+        {label}
+        {hint && <span className="ml-1 font-normal text-gray-400 dark:text-gray-500">({hint})</span>}
+      </label>
       {children}
       {error && <p className="mt-1 text-sm text-red-600 dark:text-red-400">{error}</p>}
     </div>

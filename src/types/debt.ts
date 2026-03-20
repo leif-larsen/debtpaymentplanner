@@ -5,6 +5,7 @@ export interface Debt {
   name: string
   balance: number
   interestRate: number // annual percentage rate (APR)
+  minimumPaymentPercent?: number // e.g. 3.5 means minimum = 3.5% of balance (credit cards)
   minimumPayment: number
   monthlyPayment: number // actual payment being made (>= minimumPayment)
   startDate: string // ISO date string

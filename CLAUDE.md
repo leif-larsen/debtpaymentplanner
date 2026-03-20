@@ -40,6 +40,14 @@ src/
 └── utils/           # Pure utility functions (calculations, formatting)
 ```
 
+## Git Workflow
+
+- After completing a task, commit and push unless told otherwise
+- Use conventional commits: `feat:`, `fix:`, `refactor:`, `docs:`, etc.
+- Small fixes and minor features: commit directly to `main`
+- Larger features: create a feature branch (`feat/<short-name>`), work in a worktree if the feature is non-trivial, then open a PR to `main`
+- Always run `npm run lint` before committing — fix any errors introduced by the change (pre-existing errors are acceptable to leave)
+
 ## Do Not
 
 - Add a backend or database — localStorage is intentional
