@@ -1,5 +1,4 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
 import type { Payment, PaymentType } from '../types/payment'
 
 const generateId = () =>
@@ -7,29 +6,41 @@ const generateId = () =>
 
 interface PaymentStore {
   payments: Payment[]
-  addPayment: (debtId: string, date: string, amount: number, type: PaymentType, note?: string) => void
-  removePayment: (id: string) => void
+  loading: boolean
+  error: string | null
+  load: () => Promise<void>
+  addPayment: (debtId: string, date: string, amount: number, type: PaymentType, note?: string) => Promise<void>
+  removePayment: (id: string) => Promise<void>
 }
 
+export const usePaymentStore = create<PaymentStore>()((set) => ({
+  payments: [],
+  loading: false,
+  error: null,
 
-export const usePaymentStore = create<PaymentStore>()(
-  persist(
-    (set) => ({
-      payments: [],
+  load: async () => {
+    set({ loading: true, error: null })
+    try {
+      const res = await fetch('/api/payments')
+      const { payments } = await res.json() as { payments: Payment[] }
+      set({ payments, loading: false })
+    } catch (e) {
+      set({ error: String(e), loading: false })
+    }
+  },
 
-      addPayment: (debtId, date, amount, type, note) =>
-        set((state) => ({
-          payments: [
-            ...state.payments,
-            { id: generateId(), debtId, date, amount, type, note },
-          ],
-        })),
+  addPayment: async (debtId, date, amount, type, note) => {
+    const res = await fetch('/api/payments', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: generateId(), debtId, date, amount, type, note }),
+    })
+    const { payment } = await res.json() as { payment: Payment }
+    set((s) => ({ payments: [...s.payments, payment] }))
+  },
 
-      removePayment: (id) =>
-        set((state) => ({
-          payments: state.payments.filter((p) => p.id !== id),
-        })),
-    }),
-    { name: 'debt-planner-payments' }
-  )
-)
+  removePayment: async (id) => {
+    await fetch(`/api/payments/${id}`, { method: 'DELETE' })
+    set((s) => ({ payments: s.payments.filter((p) => p.id !== id) }))
+  },
+}))

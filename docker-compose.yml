@@ -1,4 +1,6 @@
 services:
+  # Local development — Vite dev server only (hot reload).
+  # Run the API separately: npm run dev:server
   app:
     build:
       context: .
@@ -11,11 +13,22 @@ services:
     environment:
       - NODE_ENV=development
 
+  # Production — Hono server serves both the API and the built frontend.
   app-prod:
     build:
       context: .
       target: prod
     ports:
-      - "8080:80"
+      - "3000:3000"
+    volumes:
+      - db-data:/app/data
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - DB_PATH=/app/data/db.sqlite
+    restart: unless-stopped
     profiles:
       - prod
+
+volumes:
+  db-data:

@@ -33,19 +33,41 @@ A vertical reference line marks today. If you have made extra payments the forec
 
 ## Getting Started
 
+### Local development
+
+The app requires the Node/Hono API server to be running alongside the Vite dev server (which proxies `/api` calls to port 3000).
+
 ```bash
 npm install
+
+# Terminal 1 — API server (SQLite, auto-restarts on changes)
+npm run dev:server
+
+# Terminal 2 — Vite frontend (hot reload)
 npm run dev
 ```
 
-Open [http://localhost:5173](http://localhost:5173).
+Open [http://localhost:5173](http://localhost:5173). Data is stored in `./data/db.sqlite`.
 
-To build for production:
+### Deploy to a VPS with Docker Compose
 
 ```bash
-npm run build
-npm run preview
+docker compose --profile prod up -d --build
 ```
+
+The app runs on port 3000. SQLite data is stored in a named Docker volume (`db-data`) and survives container rebuilds.
+
+To deploy an update:
+
+```bash
+docker compose --profile prod up -d --build
+```
+
+Docker Compose replaces the container but the `db-data` volume (and your data) is untouched.
+
+### Migrating existing browser data
+
+If you had data stored in the old localStorage-based version, a yellow banner will appear on first load. Click **Migrate now** to copy all debts and payments from the browser into the SQLite database, then clear the localStorage keys. The migration is idempotent — running it twice will not create duplicates.
 
 ## Project Structure
 

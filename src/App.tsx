@@ -1,7 +1,10 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Dashboard from './components/Dashboard'
 import DebtForm from './components/DebtForm'
 import PaymentsPage from './components/PaymentsPage'
+import MigrationBanner from './components/MigrationBanner'
+import { useDebtStore } from './store/useDebtStore'
+import { usePaymentStore } from './store/usePaymentStore'
 import type { Debt } from './types/debt'
 
 type Tab = 'dashboard' | 'add-debt' | 'payments'
@@ -9,6 +12,13 @@ type Tab = 'dashboard' | 'add-debt' | 'payments'
 function App() {
   const [activeTab, setActiveTab] = useState<Tab>('dashboard')
   const [editingDebt, setEditingDebt] = useState<Debt | null>(null)
+  const loadDebts = useDebtStore((s) => s.load)
+  const loadPayments = usePaymentStore((s) => s.load)
+
+  useEffect(() => {
+    loadDebts()
+    loadPayments()
+  }, [loadDebts, loadPayments])
 
   const handleEditDebt = (debt: Debt) => {
     setEditingDebt(debt)
@@ -29,6 +39,7 @@ function App() {
 
   return (
     <div className="min-h-screen bg-white dark:bg-gray-900">
+      <MigrationBanner />
       {/* Navigation bar */}
       <nav className="bg-gray-900 text-white">
         <div className="mx-auto max-w-5xl px-4">
