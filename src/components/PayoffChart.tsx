@@ -59,11 +59,11 @@ export default function PayoffChart({ debts }: PayoffChartProps) {
     typeof value === 'number' ? formatCurrency(value) : String(value ?? '')
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg p-5">
-      <h2 className="text-sm font-semibold text-gray-700 mb-4">Balance over time</h2>
+    <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-5">
+      <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">Balance over time</h2>
       <ResponsiveContainer width="100%" height={300}>
         <LineChart data={data} margin={{ top: 4, right: 16, left: 8, bottom: 4 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+          <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
           <XAxis
             dataKey="month"
             tick={{ fontSize: 11 }}
