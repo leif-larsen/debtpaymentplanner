@@ -64,7 +64,7 @@ app.post('/api/migrate', async (c) => {
 app.use('/*', serveStatic({ root: './dist' }))
 app.get('/*', serveStatic({ path: './dist/index.html' }))
 
-const port = Number(process.env.PORT ?? 3000)
+const port = Number(process.env.PORT ?? 4759)
 console.log(`Server running on http://localhost:${port}`)
 
 serve({ fetch: app.fetch, port })

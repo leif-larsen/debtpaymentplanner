@@ -35,7 +35,7 @@ A vertical reference line marks today. Extra payments shift the forecast line to
 
 ### Local development
 
-The app requires the Node/Hono API server running alongside the Vite dev server. Vite proxies `/api` requests to port 3000.
+The app requires the Node/Hono API server running alongside the Vite dev server. Vite proxies `/api` requests to port 4759.
 
 ```bash
 npm install
@@ -55,7 +55,7 @@ Open [http://localhost:5173](http://localhost:5173). Data is stored in `./data/d
 docker compose --profile prod up -d --build
 ```
 
-The app runs on port 3000. SQLite data is stored in a named Docker volume (`db-data`) and survives container rebuilds and image updates.
+The app runs on port 4759. SQLite data is stored in a named Docker volume (`db-data`) and survives container rebuilds and image updates.
 
 To deploy an update, run the same command — Docker Compose replaces the container while leaving the `db-data` volume intact.
 

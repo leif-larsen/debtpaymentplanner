@@ -10,7 +10,7 @@ export default defineConfig({
     port: 5173,
     allowedHosts: true, // allow any hostname (covers Docker, reverse proxies, custom hostnames)
     proxy: {
-      '/api': 'http://localhost:3000',
+      '/api': 'http://localhost:4759',
     },
   },
 })

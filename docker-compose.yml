@@ -19,12 +19,12 @@ services:
       context: .
       target: prod
     ports:
-      - "3000:3000"
+      - "4759:4759"
     volumes:
       - db-data:/app/data
     environment:
       - NODE_ENV=production
-      - PORT=3000
+      - PORT=4759
       - DB_PATH=/app/data/db.sqlite
     restart: unless-stopped
     profiles:
