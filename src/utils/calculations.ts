@@ -175,13 +175,23 @@ export function calculateExtraPaymentImpact(debt: Debt, extraAmount: number): Ex
 
 /**
  * Compute the actual current balance of a debt after applying recorded payments and charges.
- * Payments reduce the balance; charges increase it.
+ * For each payment, one month of interest is accrued on the running balance before the
+ * payment is applied — this correctly handles installment loans where the payment covers
+ * both principal and interest, and revolving debts where interest capitalises each period.
+ * Charges are added directly without accruing interest.
  */
 export function getActualBalance(debt: Debt, payments: Payment[]): number {
-  const net = payments.reduce((sum, p) => {
-    return p.type === 'payment' ? sum - p.amount : sum + p.amount
-  }, 0)
-  return Math.max(0, debt.balance + net)
+  const monthlyRate = debt.interestRate / 100 / 12
+  const sorted = [...payments].sort((a, b) => a.date.localeCompare(b.date))
+  let balance = debt.balance
+  for (const p of sorted) {
+    if (p.type === 'payment') {
+      balance = Math.max(0, balance + balance * monthlyRate - p.amount)
+    } else {
+      balance = balance + p.amount
+    }
+  }
+  return balance
 }
 
 /**
@@ -197,20 +207,25 @@ export function getPlannedBalanceAtDate(debt: Debt, isoDate: string): number {
 
 /**
  * Build a series of { date, balance } points from recorded payments for chart rendering.
- * Starts at debt.balance on debt.startDate and applies each payment chronologically.
+ * Starts at debt.balance on debt.startDate. For each payment, one month of interest is
+ * accrued before the payment is applied (same logic as getActualBalance).
  */
 export function getActualBalanceSeries(
   debt: Debt,
   payments: Payment[]
 ): { date: string; balance: number }[] {
+  const monthlyRate = debt.interestRate / 100 / 12
   const sorted = [...payments].sort((a, b) => a.date.localeCompare(b.date))
   const series: { date: string; balance: number }[] = [
     { date: debt.startDate.slice(0, 7), balance: debt.balance },
   ]
   let balance = debt.balance
   for (const p of sorted) {
-    balance = p.type === 'payment' ? balance - p.amount : balance + p.amount
-    balance = Math.max(0, balance)
+    if (p.type === 'payment') {
+      balance = Math.max(0, balance + balance * monthlyRate - p.amount)
+    } else {
+      balance = balance + p.amount
+    }
     series.push({ date: p.date.slice(0, 7), balance })
   }
   return series
