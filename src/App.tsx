@@ -1,11 +1,30 @@
 import { useState } from 'react'
 import Dashboard from './components/Dashboard'
 import DebtForm from './components/DebtForm'
+import type { Debt } from './types/debt'
 
 type Tab = 'dashboard' | 'add-debt'
 
 function App() {
   const [activeTab, setActiveTab] = useState<Tab>('dashboard')
+  const [editingDebt, setEditingDebt] = useState<Debt | null>(null)
+
+  const handleEditDebt = (debt: Debt) => {
+    setEditingDebt(debt)
+    setActiveTab('add-debt')
+  }
+
+  const handleFormSave = () => {
+    setEditingDebt(null)
+    setActiveTab('dashboard')
+  }
+
+  const handleTabChange = (tab: Tab) => {
+    if (tab === 'dashboard') setEditingDebt(null)
+    setActiveTab(tab)
+  }
+
+  const addDebtLabel = editingDebt ? 'Edit Debt' : 'Add Debt'
 
   return (
     <div className="min-h-screen bg-white">
@@ -21,7 +40,7 @@ function App() {
             {/* Nav tabs */}
             <div className="flex gap-1">
               <button
-                onClick={() => setActiveTab('dashboard')}
+                onClick={() => handleTabChange('dashboard')}
                 className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
                   activeTab === 'dashboard'
                     ? 'bg-gray-700 text-white'
@@ -31,14 +50,14 @@ function App() {
                 Dashboard
               </button>
               <button
-                onClick={() => setActiveTab('add-debt')}
+                onClick={() => handleTabChange('add-debt')}
                 className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
                   activeTab === 'add-debt'
                     ? 'bg-gray-700 text-white'
                     : 'text-gray-300 hover:bg-gray-800 hover:text-white'
                 }`}
               >
-                Add Debt
+                {addDebtLabel}
               </button>
             </div>
           </div>
@@ -47,7 +66,17 @@ function App() {
 
       {/* Main content */}
       <main className="mx-auto max-w-5xl px-4 py-6">
-        {activeTab === 'dashboard' ? <Dashboard /> : <DebtForm />}
+        {activeTab === 'dashboard' ? (
+          <Dashboard
+            onAddDebt={() => handleTabChange('add-debt')}
+            onEditDebt={handleEditDebt}
+          />
+        ) : (
+          <DebtForm
+            initialData={editingDebt ?? undefined}
+            onSave={handleFormSave}
+          />
+        )}
       </main>
     </div>
   )
