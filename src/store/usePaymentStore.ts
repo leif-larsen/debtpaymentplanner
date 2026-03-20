@@ -9,12 +9,12 @@ interface PaymentStore {
   payments: Payment[]
   addPayment: (debtId: string, date: string, amount: number, type: PaymentType, note?: string) => void
   removePayment: (id: string) => void
-  getPaymentsForDebt: (debtId: string) => Payment[]
 }
+
 
 export const usePaymentStore = create<PaymentStore>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       payments: [],
 
       addPayment: (debtId, date, amount, type, note) =>
@@ -29,9 +29,6 @@ export const usePaymentStore = create<PaymentStore>()(
         set((state) => ({
           payments: state.payments.filter((p) => p.id !== id),
         })),
-
-      getPaymentsForDebt: (debtId) =>
-        get().payments.filter((p) => p.debtId === debtId),
     }),
     { name: 'debt-planner-payments' }
   )

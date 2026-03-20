@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 import { useDebtStore } from '../store/useDebtStore'
 import { usePaymentStore } from '../store/usePaymentStore'
 import { formatCurrency, getActualBalance, getPlannedBalanceAtDate } from '../utils/calculations'
@@ -37,7 +38,7 @@ export default function PaymentsPage() {
 }
 
 function DebtPaymentRow({ debt, onAddPayment }: { debt: Debt; onAddPayment: () => void }) {
-  const payments = usePaymentStore((s) => s.getPaymentsForDebt(debt.id))
+  const payments = usePaymentStore(useShallow((s) => s.payments.filter((p) => p.debtId === debt.id)))
   const removePayment = usePaymentStore((s) => s.removePayment)
   const [expanded, setExpanded] = useState(false)
 
