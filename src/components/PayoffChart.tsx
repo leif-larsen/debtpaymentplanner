@@ -13,15 +13,28 @@ import { calculatePayoffPlan, formatCurrency, getActualBalanceSeries } from '../
 import { usePaymentStore } from '../store/usePaymentStore'
 import type { Debt } from '../types/debt'
 
+// Planned line colors (saturated)
 const COLORS = [
-  '#6366f1', // indigo
-  '#f59e0b', // amber
-  '#10b981', // emerald
-  '#ef4444', // red
-  '#3b82f6', // blue
-  '#8b5cf6', // violet
-  '#ec4899', // pink
-  '#14b8a6', // teal
+  '#6366f1', // indigo-500
+  '#f59e0b', // amber-500
+  '#10b981', // emerald-500
+  '#ef4444', // red-500
+  '#3b82f6', // blue-500
+  '#8b5cf6', // violet-500
+  '#ec4899', // pink-500
+  '#14b8a6', // teal-500
+]
+
+// Actual line colors — lighter shade of each planned color
+const ACTUAL_COLORS = [
+  '#a5b4fc', // indigo-300
+  '#fcd34d', // amber-300
+  '#6ee7b7', // emerald-300
+  '#fca5a5', // red-300
+  '#93c5fd', // blue-300
+  '#c4b5fd', // violet-300
+  '#f9a8d4', // pink-300
+  '#5eead4', // teal-300
 ]
 
 interface PayoffChartProps {
@@ -185,7 +198,7 @@ export default function PayoffChart({ debts }: PayoffChartProps) {
                   key={`${debt.id}-actual`}
                   type="monotone"
                   dataKey={`${debt.name} (actual)`}
-                  stroke={COLORS[i % COLORS.length]}
+                  stroke={ACTUAL_COLORS[i % ACTUAL_COLORS.length]}
                   dot={false}
                   strokeWidth={2}
                   strokeDasharray="5 3"
