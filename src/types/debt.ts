@@ -1,11 +1,14 @@
 export type PayoffStrategy = 'avalanche' | 'snowball' | 'custom'
 
+export type DebtType = 'installment' | 'revolving'
+
 export interface Debt {
   id: string
+  debtType?: DebtType // defaults to 'installment' when absent (backwards compat)
   name: string
   balance: number
   interestRate: number // annual percentage rate (APR)
-  minimumPaymentPercent?: number // e.g. 3.5 means minimum = 3.5% of balance (credit cards)
+  minimumPaymentPercent?: number // required for revolving; e.g. 3.5 means 3.5% of balance
   minimumPayment: number
   monthlyPayment: number // actual payment being made (>= minimumPayment)
   startDate: string // ISO date string

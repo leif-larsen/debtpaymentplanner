@@ -89,7 +89,17 @@ export default function DebtCard({ debt, onEdit }: DebtCardProps) {
       ) : (
         <>
           <div className="flex items-start justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{debt.name}</h3>
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{debt.name}</h3>
+              <span className={[
+                'inline-block mt-0.5 text-xs font-medium px-2 py-0.5 rounded-full',
+                (debt.debtType ?? 'installment') === 'revolving'
+                  ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400'
+                  : 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-400',
+              ].join(' ')}>
+                {(debt.debtType ?? 'installment') === 'revolving' ? 'Revolving' : 'Installment'}
+              </span>
+            </div>
             <div className="flex gap-2">
               <button
                 onClick={() => onEdit?.(debt)}

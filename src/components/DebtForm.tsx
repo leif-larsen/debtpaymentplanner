@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useDebtStore } from '../store/useDebtStore'
-import type { Debt, DebtFormData } from '../types/debt'
+import type { Debt, DebtFormData, DebtType } from '../types/debt'
 
 interface DebtFormProps {
   initialData?: Debt
@@ -10,6 +10,7 @@ interface DebtFormProps {
 const today = () => new Date().toISOString().slice(0, 10)
 
 const emptyForm = (): DebtFormData => ({
+  debtType: 'installment',
   name: '',
   balance: 0,
   interestRate: 0,
@@ -34,9 +35,34 @@ export default function DebtForm({ initialData, onSave }: DebtFormProps) {
     if (initialData) setForm({ ...initialData })
   }, [initialData])
 
+  const debtType: DebtType = form.debtType ?? 'installment'
+
   const set = <K extends keyof DebtFormData>(key: K, value: DebtFormData[K]) => {
     setForm((f) => ({ ...f, [key]: value }))
     setErrors((e) => ({ ...e, [key]: undefined }))
+  }
+
+  const handleTypeChange = (type: DebtType) => {
+    setForm((f) => ({
+      ...f,
+      debtType: type,
+      minimumPaymentPercent: type === 'revolving' ? (f.minimumPaymentPercent ?? undefined) : undefined,
+    }))
+    setErrors({})
+  }
+
+  const handleMinPctChange = (raw: string) => {
+    const pct = raw === '' ? undefined : Number(raw)
+    const computed = pct && form.balance > 0
+      ? Math.round(form.balance * pct / 100 * 100) / 100
+      : undefined
+    setForm((f) => ({
+      ...f,
+      minimumPaymentPercent: pct,
+      minimumPayment: computed ?? f.minimumPayment,
+      monthlyPayment: computed ? Math.max(f.monthlyPayment, computed) : f.monthlyPayment,
+    }))
+    setErrors((e) => ({ ...e, minimumPaymentPercent: undefined, minimumPayment: undefined }))
   }
 
   const validate = (): boolean => {
@@ -44,10 +70,20 @@ export default function DebtForm({ initialData, onSave }: DebtFormProps) {
     if (!form.name.trim()) e.name = 'Name is required'
     if (!form.balance || form.balance <= 0) e.balance = 'Balance must be greater than 0'
     if (!form.interestRate || form.interestRate <= 0) e.interestRate = 'Interest rate must be greater than 0'
-    if (!form.minimumPayment || form.minimumPayment <= 0) e.minimumPayment = 'Minimum payment must be greater than 0'
-    if (!form.monthlyPayment || form.monthlyPayment <= 0) e.monthlyPayment = 'Monthly payment must be greater than 0'
+
+    if (debtType === 'revolving') {
+      if (!form.minimumPaymentPercent || form.minimumPaymentPercent <= 0)
+        e.minimumPaymentPercent = 'Minimum payment % is required for revolving credit'
+    } else {
+      if (!form.minimumPayment || form.minimumPayment <= 0)
+        e.minimumPayment = 'Minimum payment must be greater than 0'
+    }
+
+    if (!form.monthlyPayment || form.monthlyPayment <= 0)
+      e.monthlyPayment = 'Monthly payment must be greater than 0'
     else if (form.monthlyPayment < form.minimumPayment)
       e.monthlyPayment = 'Monthly payment cannot be less than the minimum payment'
+
     if (!form.startDate) e.startDate = 'Start date is required'
     setErrors(e)
     return Object.keys(e).length === 0
@@ -78,12 +114,40 @@ export default function DebtForm({ initialData, onSave }: DebtFormProps) {
       </h2>
 
       <form onSubmit={handleSubmit} noValidate className="space-y-5">
+
+        {/* Debt type selector */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Debt type
+          </label>
+          <div className="grid grid-cols-2 gap-2">
+            {(['installment', 'revolving'] as DebtType[]).map((type) => (
+              <button
+                key={type}
+                type="button"
+                onClick={() => handleTypeChange(type)}
+                className={[
+                  'py-2 px-3 rounded-md text-sm font-medium border transition-colors text-left',
+                  debtType === type
+                    ? 'bg-indigo-600 border-indigo-600 text-white'
+                    : 'bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:border-indigo-400',
+                ].join(' ')}
+              >
+                <span className="block font-semibold capitalize">{type}</span>
+                <span className={`block text-xs mt-0.5 ${debtType === type ? 'text-indigo-200' : 'text-gray-400 dark:text-gray-500'}`}>
+                  {type === 'installment' ? 'Fixed payment · covers principal + interest' : 'Interest accrues to balance · % minimum'}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+
         <Field label="Name" error={errors.name}>
           <input
             type="text"
             value={form.name}
             onChange={(e) => set('name', e.target.value)}
-            placeholder="e.g. Student loan"
+            placeholder={debtType === 'installment' ? 'e.g. Car loan' : 'e.g. Visa card'}
             className={input(errors.name)}
           />
         </Field>
@@ -112,32 +176,34 @@ export default function DebtForm({ initialData, onSave }: DebtFormProps) {
           />
         </Field>
 
-        <div className="grid grid-cols-2 gap-4">
-          <Field label="Minimum payment % (optional)" hint="e.g. 3.5 for credit cards">
-            <input
-              type="number"
-              min={0}
-              max={100}
-              step={0.1}
-              value={form.minimumPaymentPercent ?? ''}
-              onChange={(e) => {
-                const pct = e.target.value === '' ? undefined : Number(e.target.value)
-                const computed = pct && form.balance > 0
-                  ? Math.round(form.balance * pct / 100 * 100) / 100
-                  : undefined
-                setForm((f) => ({
-                  ...f,
-                  minimumPaymentPercent: pct,
-                  minimumPayment: computed ?? f.minimumPayment,
-                  monthlyPayment: computed ?? f.monthlyPayment,
-                }))
-                setErrors((err) => ({ ...err, minimumPayment: undefined, monthlyPayment: undefined }))
-              }}
-              placeholder="e.g. 3.5"
-              className={input()}
-            />
-          </Field>
-
+        {debtType === 'revolving' ? (
+          /* Revolving: minimum % is required; NOK amount auto-computed */
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="Minimum payment %" error={errors.minimumPaymentPercent}>
+              <input
+                type="number"
+                min={0}
+                max={100}
+                step={0.1}
+                value={form.minimumPaymentPercent ?? ''}
+                onChange={(e) => handleMinPctChange(e.target.value)}
+                placeholder="e.g. 3.5"
+                className={input(errors.minimumPaymentPercent)}
+              />
+            </Field>
+            <Field label="Minimum payment (NOK)" hint="auto-computed">
+              <input
+                type="number"
+                min={0}
+                step={1}
+                value={form.minimumPayment || ''}
+                readOnly
+                className={`${input()} opacity-60 cursor-not-allowed`}
+              />
+            </Field>
+          </div>
+        ) : (
+          /* Installment: fixed minimum amount */
           <Field label="Minimum monthly payment (NOK)" error={errors.minimumPayment}>
             <input
               type="number"
@@ -149,7 +215,7 @@ export default function DebtForm({ initialData, onSave }: DebtFormProps) {
               className={input(errors.minimumPayment)}
             />
           </Field>
-        </div>
+        )}
 
         <Field label="Actual monthly payment (NOK)" error={errors.monthlyPayment}>
           <input
