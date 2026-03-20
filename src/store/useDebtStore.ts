@@ -1,4 +1,7 @@
 import { create } from 'zustand'
+
+const generateId = () =>
+  Date.now().toString(36) + Math.random().toString(36).slice(2, 9)
 import { persist } from 'zustand/middleware'
 import type { Debt, DebtFormData } from '../types/debt'
 
@@ -18,7 +21,7 @@ export const useDebtStore = create<DebtStore>()(
         set((state) => ({
           debts: [
             ...state.debts,
-            { ...data, id: crypto.randomUUID() },
+            { ...data, id: generateId() },
           ],
         })),
 
