@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 import { useDebtStore } from '../store/useDebtStore'
 import { usePaymentStore } from '../store/usePaymentStore'
 import { calculatePayoffPlan, formatCurrency, formatDuration, getActualBalance, getPlannedBalanceAtDate } from '../utils/calculations'
@@ -52,7 +53,7 @@ function AmortizationTable({ debt }: { debt: Debt }) {
 
 export default function DebtCard({ debt, onEdit }: DebtCardProps) {
   const removeDebt = useDebtStore((s) => s.removeDebt)
-  const payments = usePaymentStore((s) => s.getPaymentsForDebt(debt.id))
+  const payments = usePaymentStore(useShallow((s) => s.payments.filter((p) => p.debtId === debt.id)))
   const [confirming, setConfirming] = useState(false)
   const [showSchedule, setShowSchedule] = useState(false)
 
