@@ -9,5 +9,8 @@ export default defineConfig({
     host: '0.0.0.0', // required for Docker to expose the dev server
     port: 5173,
     allowedHosts: true, // allow any hostname (covers Docker, reverse proxies, custom hostnames)
+    proxy: {
+      '/api': 'http://localhost:3000',
+    },
   },
 })

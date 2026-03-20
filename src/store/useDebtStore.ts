@@ -1,42 +1,57 @@
 import { create } from 'zustand'
+import type { Debt, DebtFormData } from '../types/debt'
 
 const generateId = () =>
   Date.now().toString(36) + Math.random().toString(36).slice(2, 9)
-import { persist } from 'zustand/middleware'
-import type { Debt, DebtFormData } from '../types/debt'
 
 interface DebtStore {
   debts: Debt[]
-  addDebt: (data: DebtFormData) => void
-  updateDebt: (id: string, data: Partial<DebtFormData>) => void
-  removeDebt: (id: string) => void
+  loading: boolean
+  error: string | null
+  load: () => Promise<void>
+  addDebt: (data: DebtFormData) => Promise<void>
+  updateDebt: (id: string, data: Partial<DebtFormData>) => Promise<void>
+  removeDebt: (id: string) => Promise<void>
 }
 
-export const useDebtStore = create<DebtStore>()(
-  persist(
-    (set) => ({
-      debts: [],
+export const useDebtStore = create<DebtStore>()((set) => ({
+  debts: [],
+  loading: false,
+  error: null,
 
-      addDebt: (data) =>
-        set((state) => ({
-          debts: [
-            ...state.debts,
-            { ...data, id: generateId() },
-          ],
-        })),
+  load: async () => {
+    set({ loading: true, error: null })
+    try {
+      const res = await fetch('/api/debts')
+      const { debts } = await res.json() as { debts: Debt[] }
+      set({ debts, loading: false })
+    } catch (e) {
+      set({ error: String(e), loading: false })
+    }
+  },
 
-      updateDebt: (id, data) =>
-        set((state) => ({
-          debts: state.debts.map((d) =>
-            d.id === id ? { ...d, ...data } : d
-          ),
-        })),
+  addDebt: async (data) => {
+    const res = await fetch('/api/debts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...data, id: generateId() }),
+    })
+    const { debt } = await res.json() as { debt: Debt }
+    set((s) => ({ debts: [...s.debts, debt] }))
+  },
 
-      removeDebt: (id) =>
-        set((state) => ({
-          debts: state.debts.filter((d) => d.id !== id),
-        })),
-    }),
-    { name: 'debt-planner' }
-  )
-)
+  updateDebt: async (id, data) => {
+    const res = await fetch(`/api/debts/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    })
+    const { debt } = await res.json() as { debt: Debt }
+    set((s) => ({ debts: s.debts.map((d) => (d.id === id ? debt : d)) }))
+  },
+
+  removeDebt: async (id) => {
+    await fetch(`/api/debts/${id}`, { method: 'DELETE' })
+    set((s) => ({ debts: s.debts.filter((d) => d.id !== id) }))
+  },
+}))

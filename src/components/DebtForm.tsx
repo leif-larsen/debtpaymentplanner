@@ -89,16 +89,16 @@ export default function DebtForm({ initialData, onSave }: DebtFormProps) {
     return Object.keys(e).length === 0
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!validate()) return
 
     if (initialData) {
-      updateDebt(initialData.id, form)
+      await updateDebt(initialData.id, form)
       setSuccess('Debt updated!')
       setTimeout(() => onSave?.(), 800)
     } else {
-      addDebt(form)
+      await addDebt(form)
       setSuccess('Debt added!')
       setForm(emptyForm())
       setTimeout(() => onSave?.(), 800)
